@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products | CodeVector</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #fdfdfd;
+    }
+    .product-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.04);
+      border-color: #e5e7eb;
+    }
+  </style>
+</head>
+<body class="text-gray-900 antialiased min-h-screen flex flex-col">
+  <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10 transition-all">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 bg-black rounded flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight">CodeVector</h1>
+      </div>
+      <div class="flex items-center">
+        <select id="category-filter" class="text-sm font-medium text-gray-700 border-gray-200 rounded-lg shadow-sm focus:border-black focus:ring-black py-2 pl-3 pr-8 border bg-white cursor-pointer hover:bg-gray-50 transition-colors appearance-none outline-none">
+          <option value="">All Categories</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Home">Home</option>
+          <option value="Sports">Sports</option>
+          <option value="Toys">Toys</option>
+          <option value="Automotive">Automotive</option>
+          <option value="Books">Books</option>
+          <option value="Beauty">Beauty</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold tracking-tight text-gray-900 mb-2">Discover Products</h2>
+      <p class="text-gray-500">Fast, paginated browsing. Items update without losing your place.</p>
+    </div>
+
+    <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <!-- Products injected here -->
+    </div>
+
+    <div id="loading-state" class="py-16 flex justify-center hidden">
+      <svg class="animate-spin h-8 w-8 text-gray-400" xmlns="http://www.w3.org/O/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+
+    <div class="mt-12 mb-8 flex justify-center">
+      <button id="load-more-btn" class="hidden px-8 py-3 bg-white border border-gray-200 text-sm font-semibold rounded-full text-gray-800 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all">
+        Load More
+      </button>
+    </div>
+  </main>
+
+  <script>
+    let cursor = null;
+    let hasNextPage = true;
+    let isLoading = false;
+    let currentCategory = '';
+
+    const grid = document.getElementById('products-grid');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadingState = document.getElementById('loading-state');
+    const categoryFilter = document.getElementById('category-filter');
+
+    function formatPrice(price) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
+    }
+
+    function createProductCard(product) {
+      const el = document.createElement('div');
+      el.className = 'product-card bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col h-full';
+      
+      const dateStr = new Date(product.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+      el.innerHTML = `
+        <div class="aspect-w-4 aspect-h-3 bg-gray-50/50 p-6 flex justify-center items-center border-b border-gray-50">
+          <div class="h-20 w-20 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-300">
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        </div>
+        <div class="p-5 flex-1 flex flex-col">
+          <div class="flex justify-between items-start mb-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+              ${product.category}
+            </span>
+          </div>
+          <h3 class="text-[15px] font-semibold text-gray-900 leading-snug mb-4">${product.name}</h3>
+          
+          <div class="mt-auto pt-4 border-t border-gray-100 flex items-end justify-between">
+            <div>
+              <p class="text-[10px] text-gray-400 font-medium mb-1">UPDATED ${dateStr}</p>
+              <p class="text-lg font-bold text-gray-900 tracking-tight">${formatPrice(product.price)}</p>
+            </div>
+            <p class="text-[10px] text-gray-300 font-mono">#${product.id}</p>
+          </div>
+        </div>
+      `;
+      return el;
+    }
+
+    async function fetchProducts(reset = false) {
+      if (isLoading || (!hasNextPage && !reset)) return;
+      
+      if (reset) {
+        cursor = null;
+        grid.innerHTML = '';
+        hasNextPage = true;
+      }
+
+      isLoading = true;
+      loadingState.classList.remove('hidden');
+      loadMoreBtn.classList.add('hidden');
+
+      try {
+        const url = new URL('/api/products', window.location.origin);
+        url.searchParams.append('limit', '24');
+        if (cursor) url.searchParams.append('cursor', cursor);
+        if (currentCategory) url.searchParams.append('category', currentCategory);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const json = await res.json();
+
+        if (json.data && json.data.length > 0) {
+          json.data.forEach(product => {
+            grid.appendChild(createProductCard(product));
+          });
+        } else if (reset) {
+          grid.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500 font-medium">No products found in this category.</div>';
+        }
+
+        cursor = json.nextCursor;
+        hasNextPage = json.hasNextPage;
+
+        if (hasNextPage) {
+          loadMoreBtn.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err);
+      } finally {
+        isLoading = false;
+        loadingState.classList.add('hidden');
+      }
+    }
+
+    categoryFilter.addEventListener('change', (e) => {
+      currentCategory = e.target.value;
+      fetchProducts(true);
+    });
+
+    loadMoreBtn.addEventListener('click', () => {
+      fetchProducts();
+    });
+
+    // Infinite scroll observer (Optional enhancement for UX)
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasNextPage && !isLoading) {
+        // Optional: uncomment to enable infinite scroll instead of load more button
+        // fetchProducts(); 
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(loadMoreBtn);
+
+    fetchProducts();
+  </script>
+</body>
+</html>
